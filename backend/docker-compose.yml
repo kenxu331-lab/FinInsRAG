@@ -1,0 +1,112 @@
+services:
+  swxy_api:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    hostname: swxy_api
+    container_name: swxy_api
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - HF_ENDPOINT=https://hf-mirror.com
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@gsk_pg:5432/gsk
+      - ES_HOST=http://es01:9200
+      - ROOT_PATH=
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    ports:
+      - "${BACKEND_PORT:-8001}:8000"
+    volumes:
+      - ./app:/app
+    command: ["uvicorn", "app_main:app", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    depends_on:
+      - gsk_pg
+      - es01
+      - redis
+    networks:
+      - gsk_network
+
+  es01:
+    container_name: gsk-es-01
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+    volumes:
+      - gsk_esdata01:/usr/share/elasticsearch/data
+    ports:
+      - "${ES_PORT:-9201}:9200"
+    env_file: .env
+    environment:
+      - node.name=es01
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - bootstrap.memory_lock=false
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - cluster.routing.allocation.disk.watermark.low=5gb
+      - cluster.routing.allocation.disk.watermark.high=3gb
+      - cluster.routing.allocation.disk.watermark.flood_stage=2gb
+      - TZ=${TIMEZONE}
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    mem_limit: ${MEM_LIMIT}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    restart: on-failure
+    networks:
+      - gsk_network
+
+  gsk_pg:
+    container_name: gsk_pg
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=gsk
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gsk"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - gsk_network
+
+  redis:
+    container_name: gsk_redis
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - gsk_network
+
+volumes:
+  gsk_esdata01:
+    driver: local
+  pg_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  gsk_network:
+    driver: bridge

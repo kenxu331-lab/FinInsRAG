@@ -1,0 +1,10 @@
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+*.log
+
+.env
+!.env.example
+
+# Runtime uploads are data, not source files.
+app/service/core/storage/file/

@@ -1,0 +1,33 @@
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets and local configuration
+**/.env
+!**/.env.example
+**/.env.local
+
+# Python caches and local environments
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Runtime logs, PID files and local uploads
+backend/*.log
+backend/*.pid
+backend/app/service/core/storage/file/
+backend/app/service/core/storage/wiki/
+backend/app/service/core/rag/res/deepdoc/.cache/
+
+# Temporary evaluation/runtime artifacts
+tmp/
+logs/

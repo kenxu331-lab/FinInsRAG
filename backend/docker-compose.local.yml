@@ -1,0 +1,8 @@
+services:
+  gsk_pg:
+    ports:
+      - "${POSTGRES_LOCAL_PORT:-5433}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_LOCAL_PORT:-6380}:6379"
